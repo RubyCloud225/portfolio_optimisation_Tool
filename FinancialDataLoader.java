@@ -1,127 +1,99 @@
 import java.sql.*;
 import java.util.List;
 import java.util.Properties;
+import java.io.IOException;
 
 public class FinancialDataLoader {
-    private static final String DB_URL = "jdbc:sqlserver://localhost:1433;databaseName=FinancialDB";
-    private static final String DB_USERNAME = "your_username";
-    private static final String DB_PASSWORD = "your_password";
 
-    public void loadFinancialData() {
-        // Load stocks data
-        loadStocksData();
+    public Connection getConnection() {
+        String url = "jsbc:sqlserver://localhost:1433;databaseName=mydatabase";
+        String username = "myusername";
+        String password = "mypassword";
 
-        // Load Bonds data
-        loadBondsData();
-
-        // Load FX data
-        loadFXData();
-    }
-
-    void loadStocksData() {
-        // Retrieve stocks data from API or CSV file
-        String stocksData = retrieveStocksData();
-
-        // Parse Json Data (if using API)
-        // ...
-
-        // Create a SQL statement to insert stocks data
-        String sql = "INSERT INTO Stocks (Symbol, Name, Price, Volume) VALUES ( ?, ?, ?, ?)";
-
-        try (Connection conn = getConnection();
-            PreparedStatement pstmt = conn.prepareStatement(sql)) {
-                // Set the SQL statement parameters
-                pstmt.setString(1, "AAPL");
-                pstmt.setString(2, "Apple Inc.");
-                pstmt.setDouble(3, 150.0);
-                pstmt.setInt(4, 1000);
-
-                // Execute the SQL Statement
-                pstmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error loading stocks data: " + e.getMessage());
-        }
-    }
-
-    private void loadBondsData() {
-        // Retrieve bonds data from API or CSV file
-        String bondsData = retrieveBondsData();
-        // Parse JSON data (if using API)
-        // ...
-        // Create a SQL statement to insert bonds data
-        String sql = "INSERT INTO Bonds (Symbol, Name, Price, Yield, Maturity) VALUES ( ?, ?, ?, ?)";
-
-        try (Connection conn = getConnection();
-            PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            
-            // Set bonds data parameters
-            pstmt.setString(1, "USDBOND");
-            pstmt.setString(2, "US Treasury Bond");
-            pstmt.setDouble(3, 100.0);
-            pstmt.setDouble(4, 2.5);
-            pstmt.setDate(5, new java.sql.Date(System.currentTimeMillis()));
-
-            // Execute the SQL statement
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error loading bonds data: " + e.getMessage());
-        }
-    }
-
-    private void loadFXData() {
-        // Retrieve FX data from API or CSV file
-        String fxData = retrieveFXData();
-
-        // Parse JSON data (if using API)
-        // ...
-        // Create a SQL statement to insert FX data
-        String sql = "INSERT INTO FX (Currency, Rate, Date) VALUES ( ?, ?, ?, ?)";
-
-        try (Connection conn = getConnection();
-            PreparedStatement pstmt = conn.prepareStatement(sql)) {
-
-            // Set FX data parameters
-            pstmt.setString(1, "USD");
-            pstmt.setDouble(2, 1.2);
-            pstmt.setDate(3, new java.sql.Date(System.currentTimeMillis()));
-
-            // Execute the SQL Statement
-            pstmt.executeUpdate();
-        } catch (SQLException e) {
-            System.out.println("Error loading FX data: " + e.getMessage());
-        }
-    }
-
-    private Connection getConnection() {
-        Properties props = new Properties();
-        props.setProperty("user", DB_USERNAME);
-        props.setProperty("password", DB_PASSWORD);
+        Connection conn = null;
 
         try {
-            return DriverManager.getConnection(DB_URL, props);
+            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+            conn = DriverManager.getConnection(url, username, password);
+            System.out.println("Connected to the database!");
+
         } catch (SQLException e) {
-            System.out.println("Error connecting to database: " + e.getMessage());
-            return null;
+            System.out.println("Error connecting to the database: " + e.getMessage());
+        
+        } catch (ClassNotFoundException e) {
+            System.out.println("Error loading JDBC driver " + e.getMessage());
+        }
+
+        return conn;
+
+    }
+
+    public void createTables() {
+        try (Connection conn = getConnection();
+            Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS Stocks (Symbol VARCHAR(255), Name VARCHAR(255), Price DOUBLE, Volume INTEGER)");
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS Bonds (Symbol VARCHAR(255), Name VARCHAR(255), Price DOUBLE, Yield DOUBLE, Maturity DATE)");
+            stmt.executeUpdate("CREATE TABLE IF NOT EXISTS FX (Currency VARCHAR(255), Rate DOUBLE, Date DATE)");
+        } catch (SQLException e) {
+                System.out.println("Error creating tables: " + e.getMessage());
         }
     }
 
-    // Helper methods to retrieve data from API or CSV file
-    String retrieveStocksData() {
-        // Implement API or CSV file retrieval logic here
-        return "";
+    public void importStockData(String symbol) {
+        try {
+            List<Stock> stockData = YahooFinancialApi.getStockData(symbol);
+            importFinancialData(stockData, new ArrayList<>(), new ArrayList<>());
+        } catch (IOException e) {
+            System.out.println("Error calling Yahoo Finance API: " + e.gotMessage());
+        }
     }
 
-    private String retrieveBondsData() {
-        // Implement API or CSV file retrieval logic here
-        return "";
-    }
+    public void importFinancialData(List<Stock> stocks, List<Bond> bonds, List<FX> fxRates) {
+        // Import Stocks Data
+        for (Stock stock : stocks) {
+            String stockSql = "INSERT INTO Stocks (Symbol, Name, Price, Volume) VALUES ( ?, ?, ?, ?)";
+            try (Connection conn = getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setString(1, stock.getSymbol());
+                    pstmt.setString(2, stock.getName());
+                    pstmt.setDouble(3, stock.getPrice());
+                    pstmt.setInt(4, stock.getVolume());
+                    pstmt.executeUpdate();
+            } catch (SQLException e) {
+                System.out.println("Error importing stock data" + e.getMessage());
+            }
+        }
 
-    private String retrieveFXData() {
-        // Implement API or CSV file retrieval logic here
-        return "";
-    }
-
-    List<Stock> getStocksData() {
-        throw new UnsupportedOperationException("Not supported yet.");
+        // Import bonds data
+        for (Bond bond : bonds) {
+            String bondSql = "INSERT INTO Bonds (Symbol, Name, Price, Yield) VALUES ( ?, ?, ?, ?, ?)";
+            try (Connection conn = getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setString(1, bond.getSymbol());
+                    pstmt.setString(2, bond.getName());
+                    pstmt.setDouble(3, bond.getPrice());
+                    pstmt.setDouble(4, bond.getYield());
+                    pstmt.setDate(5, new java.sql.Date(bond.getMaturity().getTime()));
+                    pstmt.executeUpdate();
+            } catch (SQLException e) {
+                System.out.println("Error importing bond data: " + e.getMessage());
+            }
+        }
+        // Import FX Data
+        for (FX fxRate : fxRates) {
+            String fxSql = "INSERT INTO FX (Currency, Rate, Date) VALUES ( ?, ?, ?)";
+            try (Connection conn = getConnection();
+                PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    pstmt.setString(1, fxRate.getCurrency());
+                    pstmt.setDouble(2, fxRate.getRate());
+                    pstmt.setDate(3, new java.sql.Date(fxRate.getDate().getTime()));
+                    pstmt.executeUpdate();
+            } catch (SQLException e) {
+                System.out.println("Error importing FX data: " + e.getMessage());
+            }
+        }
     }
 }
+
+
+
