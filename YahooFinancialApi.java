@@ -30,5 +30,40 @@ public class YahooFinancialApi {
         return stockData;
     }
 
-    public static List<Bond> getBondData(String symbol) throws IOEception
+    public static List<Bond> getBondData(String symbol) throws IOException {
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder()
+            .url(API_URL + "?symbol=" + symbol + "&period1=0&period2=999999999&interval=1d&events=history&includeAdjustedClose=true")
+            .header("Authorization", "Bearer" + API_KEY)
+            .build();
+
+        Response response = client.newCall(request).execute();
+
+        if(!response.isSuccessful()) {
+            throw new IOException("Error calling Yahoo Finance API: " + response.code());
+        }
+
+        String responseBody = response.body().string();
+
+        return bondData;
+    
+    }
+
+    public static List<FX> getFXData(String symbol) throws IOException {
+        OkHttpClient client = new OkHttpClient();
+        Request request = new Request.Builder()
+            .url(API_URL + "?symbol=" + symbol + "&period1=0&period2=999999999&interval=1d&events=history&includeAdjustedClose=true")
+            .header("Authorization", "Bearer" + API_KEY)
+            .build();
+
+        Response response = client.newCall(request).execute();
+
+        if(!response.isSuccessful()) {
+            throw new IOException("Error calling Yahoo Finance API: " + response.code());
+        }
+
+        String responseBody = response.body().string();
+
+        return fxData;
+    }
 }

@@ -2,6 +2,7 @@ import java.sql.*;
 import java.util.List;
 import java.util.Properties;
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class FinancialDataLoader {
 
@@ -45,6 +46,24 @@ public class FinancialDataLoader {
             importFinancialData(stockData, new ArrayList<>(), new ArrayList<>());
         } catch (IOException e) {
             System.out.println("Error calling Yahoo Finance API: " + e.gotMessage());
+        }
+    }
+
+    public void importBondData(String symbol) {
+        try {
+            List<Bond> bondData = YahooFinancialApi.getBondData(symbol);
+            importFinancialData(bondData, new ArrayList<>(), new ArrayList<>());
+        } catch (IOException e) {
+            System.out.println("Error calling Yahoo Finance API: " + e.getMessage());
+        }
+    }
+
+    public void importfxData(String symbol) {
+        try {
+            List<FX> fxData = YahooFinancialApi.getfxData(symbol);
+            importFinancialData(fxData, new ArrayList<>(), new ArrayList<>());
+        } catch (IOException e) {
+            System.out.println("Error calling Yahoo Finance API: " + e.getMessage());
         }
     }
 
@@ -93,7 +112,59 @@ public class FinancialDataLoader {
             }
         }
     }
+
+    // Retrieve Stock Data
+    public List<Stock> getStocks() {
+        List<Stock> stocks = new ArrayList<>();
+        String query = "SELECT * FROM Stocks";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            while (rs.next()) {
+                Stock stock = new Stock(rs.getString("Symbol"), rs.getString("Name"), rs.getDouble("Price"), rs.getInt("Volume"));
+                stocks.add(stock);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error retrieving stock data: " + e.getMessage());
+        }
+        return stocks;
+    }
+    
+    public List<Bond> getBonds() {
+        List<Bond> bonds = new ArrayList<>();
+        String query = "SELECT * FROM Bonds";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            while (rs.next()) {
+                Bond bond = new Bond(rs.getString("Symbol"), rs.getString("Name"), rs.getDouble("Price"), rs.getDouble("Yield"), rs.getDate("Maturity"));
+                bonds.add(bond);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error retrieving bond data: " + e.getMessage());
+        }
+        return bonds;
+    }
+    
+    public List<FX> getFXRates() {
+        List<FX> fxRates = new ArrayList<>();
+        String query = "SELECT * FROM FX";
+        try (Connection conn = getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(query)) {
+            while (rs.next()) {
+                FX fxRate = new FX(rs.getString("Currency"), rs.getDouble("Rate"), rs.getDate("Date"));
+                fxRates.add(fxRate);
+            }
+        } catch (SQLException e) {
+            System.out.println("Error retrieving FX data: " + e.getMessage());
+        }
+        return fxRates;
+    }
 }
 
 
-
+///FinancialDataLoader loader = new FinancialDataLoader();
+///List<Stock> stocks = loader.getStocks();
+///List<Bond> bonds = loader.getBonds();
+///List<FX> fxRates = loader.getFXRates();
