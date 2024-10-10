@@ -41,3 +41,16 @@ public class PortfolioOptimizer {
         return solution.getPoint();
     }
 }
+
+///Example usage
+
+/// double[] returns = {0.03, 0.05, 0.01}; // asset returns
+/// RealMatrix covarianceMatrix = new Array2DRowRealMatrix(new double[][]{{0.001, 0.005, 0.002}, {0.005, 0.012, 0.007}, {0.002, 0.007, 0.015}}); // covariance matrix
+
+///PortfolioOptimizer optimizer = new PortfolioOptimizer();
+///double[] optimizedWeights = optimizer.optimizePortfolio(returns, covarianceMatrix);
+
+///System.out.println("Optimized Weights:");
+///for (int i = 0; i < optimizedWeights.length; i++) {
+    ///System.out.println("Asset " + (i + 1) + ": " + optimizedWeights[i]);
+///}
