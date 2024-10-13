@@ -3,14 +3,10 @@ import java.util.List;
 
 public class AssetReturnCalculator {
     public void calculateAssetReturns(FinancialDataLoader loader, String fxData, String bonds, String stocks) {
-        // Load the financial data from the loader
-        List<Stock> stocks = loader.getStocksData();
-        List<Bond> bonds = loader.getBondsData();
-        List<Stock> fxData = loader.getFXData();
 
         // Calculate asset returns
-        List<Double> stockReturns = calculateReturns(stocks);
-        List<Double> bondReturns = calculateReturns(bonds);
+        List<Double> stockReturns = calculateStockReturns(stocks);
+        List<Double> bondReturns = calculateBondReturns(bonds);
         List<Double> fxReturns = calculateReturns(fxData);
 
         // Calculate matrix convariance
@@ -26,17 +22,65 @@ public class AssetReturnCalculator {
         System.out.println(convarianceMatrix);
     }
 
-    private List<Double> calculateReturns(List<Stock> stocks) {
-        List<Double> returns = new ArrayList<>();
-        for (int i = 1; i < stocks.size(); i ++) {
-            FinancialInstrument current = stocks.get(i);
-            FinancialInstrument previous = stocks.get(i - 1);
+    private List<Double> calculateStockReturns(String stocks) {
+        List<Double> stockreturns = new ArrayList<>();
+        String[] stockSymbols = stocks.split(",");
+        // need a method to get a return for single stock
+        for (String symbol : stockSymbols) {
+            double returnForStock = getReturnForStock(symbol);
+            stockreturns.add(returnForStock);
+        }
+        return stockreturns;
+    }
 
-            double returnVal = (current.getPrice() - previous.getPrice()) / previous.getPrice();
-            returns.add(returnVal);
+    private double getReturnForStock(String symbol){
+        StockData stockData = FinancialDataLoader.loadStockData(symbol);
+        if (stockData == null) {
+            throw new RuntimeException("Failed to load stock data for symbol " + symbol);
         }
 
-        return returns;
+        double currentPrice = stockData.getCurrentPrice();
+        double previousPrice = stockData.getPreviousPrice();
+
+        if (previousPrice == 0) {
+            throw new RuntimeException("Previous price cannot be zero for symbol " + symbol);
+        }
+
+        double returnForStock = (currentPrice - previousPrice) / previousPrice;
+
+        return returnForStock;
+    }
+
+    private double calculateBondReturn(String bondSymbol) {
+        BondData bondData = FinancialDataLoader.loadBondData(bondSymbol);
+        if (bondData == null) {
+            throw new RuntimeException("Failed to load bond data for symbol " + bondSymbol);
+        }
+
+        double faceValue = bondData.getFaceValue();
+        double currentPrice = bondData.getCurrentPrice();
+        double couponRate = bondData.getCouponRate();
+        int yearsToMaturity = bondData.getYearsToMaturity();
+
+        // Calculate the annual coupon payment
+        double annualCouponPayment = faceValue * couponRate;
+
+        // Calculate the return for the bond
+        double bondReturn = (annualCouponPayment + (faceValue - currentPrice) / yearsToMaturity) / currentPrice;
+
+        return bondReturn;
+    }
+
+    private List<Double> calculateBondReturns(String bondSymbols) {
+        List<Double> bondReturns = new ArrayList<>();
+        String[] bondSymbolArray = bondSymbols.split(",");
+
+        for (String symbol : bondSymbolArray) {
+            double bondReturn = calculateBondReturn(symbol);
+            bondReturns.add(bondReturn);
+        }
+
+        return bondReturns;
     }
 
     private RealMatrix calculateCovarianceMatrix(List<Double> stockReturns, List<Double> bondReturns, List<Double> fxReturns) {
