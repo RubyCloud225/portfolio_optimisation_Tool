@@ -7,7 +7,7 @@ public class AssetReturnCalculator {
         // Calculate asset returns
         List<Double> stockReturns = calculateStockReturns(stocks);
         List<Double> bondReturns = calculateBondReturns(bonds);
-        List<Double> fxReturns = calculateReturns(fxData);
+        List<Double> fxReturns = calculateFxReturns(fxData);
 
         // Calculate matrix convariance
         RealMatrix convarianceMatrix = calculateCovarianceMatrix(stockReturns, bondReturns, fxReturns);
@@ -34,7 +34,7 @@ public class AssetReturnCalculator {
     }
 
     private double getReturnForStock(String symbol){
-        StockData stockData = FinancialDataLoader.loadStockData(symbol);
+        StockData stockData = FinancialDataLoader.getStocks(symbol);
         if (stockData == null) {
             throw new RuntimeException("Failed to load stock data for symbol " + symbol);
         }
@@ -52,7 +52,7 @@ public class AssetReturnCalculator {
     }
 
     private double calculateBondReturn(String bondSymbol) {
-        BondData bondData = FinancialDataLoader.loadBondData(bondSymbol);
+        BondData bondData = FinancialDataLoader.getBonds(bondSymbol);
         if (bondData == null) {
             throw new RuntimeException("Failed to load bond data for symbol " + bondSymbol);
         }
@@ -81,6 +81,34 @@ public class AssetReturnCalculator {
         }
 
         return bondReturns;
+    }
+
+    private double calculateFxReturn(String fxSymbol) {
+        FxData fxData = FinancialDataLoader.getFXRates(fxSymbol);
+        if(fxData == null) {
+            throw new RuntimeException("Failed to load FX data for symbol "+ fxSymbol);
+        }
+
+        double spotRate = fxData.getSpotRate();
+        double forwardRate = fxData.getForwardRate();
+        int daysToMaturity = fxData.getDaysToMaturity();
+
+        // Calculate the return for the FX
+        double fxReturn = (forwardRate - spotRate) / spotRate * 360 / daysToMaturity;
+
+        return fxReturn;
+    }
+
+    private List<Double> calculateFxReturns(String fxSymbols) {
+        List<Double> fxReturns = new ArrayList<>();
+        String[] fxSymbolArray = fxSymbols.split(",");
+
+        for (String symbol : fxSymbolArray) {
+            double fxReturn = calculateFxReturn(symbol);
+            fxReturns.add(fxReturn);
+        }
+
+        return fxReturns;
     }
 
     private RealMatrix calculateCovarianceMatrix(List<Double> stockReturns, List<Double> bondReturns, List<Double> fxReturns) {
